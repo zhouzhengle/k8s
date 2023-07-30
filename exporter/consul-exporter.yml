@@ -1,0 +1,71 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: consul-exporter-secret
+  namespace: aom-middleware-demo
+type: Opaque
+data:
+  consulURI: 10.247.3.138:8500  #you-guess  #对应 consul 的 URI
+
+--
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    k8s-app: consul-exporter # 根据业务需要调整成对应的名称，建议加上 Redis 实例的信息
+  name: consul-exporter # 根据业务需要调整成对应的名称，建议加上 Redis 实例的信息
+  namespace: aom-middleware-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      k8s-app: consul-exporter # 根据业务需要调整成对应的名称，建议加上 Redis 实例的信息
+  template:
+    metadata:
+      labels:
+        k8s-app: consul-exporter # 根据业务需要调整成对应的名称，建议加上 Redis 实例的信息
+    spec:
+      containers:
+        - name: consul-exporter
+          env:
+            - name: Consul_Url
+              valueFrom:
+                secretKeyRef:
+                  name: consul-exporter-secret
+                  key: consulURI
+          command: ["consul_exporter", "--consul.server=$(Consul_Url)"]
+          image: swr.cn-east-3.myhuaweicloud.com/aom-org/bitnami/consul-exporter:0.9.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9107
+              name: metric-port  # 这个名称在配置抓取任务的时候需要
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          securityContext:
+            privileged: false
+      dnsPolicy: ClusterFirst
+      imagePullSecrets:
+        - name: default-secret
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+
+---
+# 通过PodMonitor采集数据到AOM
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: consul-exporter
+  namespace: aom-middleware-demo
+spec:
+  namespaceSelector:
+    matchNames:
+      - aom-middleware-demo
+  podMetricsEndpoints:
+  - interval: 30s
+    path: /metrics
+    port: metric-port
+  selector:
+    matchLabels:
+      k8s-app: consul-exporter
