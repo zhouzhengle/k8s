@@ -1,45 +1,43 @@
 apiVersion: v1
 kind: Secret
 metadata:
-  name: es-exporter-secret
+  name: memcached-exporter-secret
   namespace: aom-middleware-demo
 type: Opaque
 data:
-  esURI: http://10.247.43.50:9200  #you-guess  #对应 ElasticSearch 的 URI
+  memcachedURI: 10.247.167.43:11211  #you-guess  #对应 Memcached 的 URI
 
----
+--
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    k8s-app: elasticsearch-exporter # 根据业务需要调整成对应的名称，建议加上 Redis 实例的信息
-  name: elasticsearch-exporter # 根据业务需要调整成对应的名称，建议加上 Redis 实例的信息
+    k8s-app: memcached-exporter # 根据业务需要调整成对应的名称，建议加上 Redis 实例的信息
+  name: memcached-exporter # 根据业务需要调整成对应的名称，建议加上 Redis 实例的信息
   namespace: aom-middleware-demo
 spec:
   replicas: 1
   selector:
     matchLabels:
-      k8s-app: elasticsearch-exporter # 根据业务需要调整成对应的名称，建议加上 Redis 实例的信息
+      k8s-app: memcached-exporter # 根据业务需要调整成对应的名称，建议加上 Redis 实例的信息
   template:
     metadata:
       labels:
-        k8s-app: elasticsearch-exporter # 根据业务需要调整成对应的名称，建议加上 Redis 实例的信息
+        k8s-app: memcached-exporter # 根据业务需要调整成对应的名称，建议加上 Redis 实例的信息
     spec:
       containers:
-        - name: elasticsearch-exporter
+        - name: memcached-exporter
           env:
-            - name: ES_ALL
-              value: "true"
-            - name: ES_URI
+            - name: Memcached_Url
               valueFrom:
                 secretKeyRef:
-                  name: es-exporter-secret
-                  key: esURI
-          command: ["elasticsearch_exporter", "--es.uri=$(ES_URI)","--es.all"]
-          image: swr.cn-east-3.myhuaweicloud.com/aom-org/bitnami/elasticsearch-exporter:1.5.0
+                  name: memcached-exporter-secret
+                  key: memcachedURI
+          command: ["memcached_exporter", "--memcached.address=$(Memcached_Url)"]
+          image: swr.cn-east-3.myhuaweicloud.com/aom-org/bitnami/memcached-exporter:0.13.0
           imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 9114
+            - containerPort: 9150
               name: metric-port  # 这个名称在配置抓取任务的时候需要
           terminationMessagePath: /dev/termination-log
           terminationMessagePolicy: File
@@ -58,7 +56,7 @@ spec:
 apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
 metadata:
-  name: elasticsearch-exporter
+  name: memcached-exporter
   namespace: aom-middleware-demo
 spec:
   namespaceSelector:
@@ -70,4 +68,4 @@ spec:
     port: metric-port
   selector:
     matchLabels:
-      k8s-app: elasticsearch-exporter
+      k8s-app: memcached-exporter
