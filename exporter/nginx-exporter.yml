@@ -5,7 +5,7 @@ metadata:
   namespace: aom-middleware-demo
 type: Opaque
 data:
-  consulURI: http://10.247.199.75:8080/nginx_status  #you-guess  #对应 consul 的 URI
+  nginxURI: http://10.247.199.75:8080/nginx_status  #you-guess  #对应 consul 的 URI
 
 --
 apiVersion: apps/v1
